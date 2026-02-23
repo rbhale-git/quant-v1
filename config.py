@@ -15,10 +15,10 @@ class Settings(BaseSettings):
 
     # Screener
     min_avg_volume: int = 1_000_000
-    atr_threshold: float = 1.0
-    rsi_buy_threshold: float = 40.0
-    rsi_sell_threshold: float = 60.0
-    sma_trend_filter: bool = True
+    atr_threshold: float = 0.5
+    rsi_buy_threshold: float = 45.0
+    rsi_sell_threshold: float = 55.0
+    sma_trend_filter: bool = False
 
     # Indicators
     sma_windows: List[int] = [20, 50, 200]
