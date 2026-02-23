@@ -44,7 +44,12 @@ layout = dbc.Container([
                     ], className="d-flex align-items-center"),
                 ], width=3),
             ], align="end"),
-            html.Div(id="dash-scan-output", className="mt-3"),
+            dcc.Loading(
+                html.Div(id="dash-scan-output", className="mt-3"),
+                type="default",
+                color="#00d632",
+            ),
+            html.Div(id="dash-fetch-progress", className="mt-3"),
             html.Div(id="scan-status", className="mt-2"),
         ]),
     ], className="mb-3"),
@@ -134,11 +139,21 @@ def run_scan(n_clicks, min_vol, atr_thresh, rsi_buy, rsi_sell):
 @callback(
     Output("dash-scan-output", "children", allow_duplicate=True),
     Input("dash-fetch-data", "n_clicks"),
+    State("dash-fetch-progress", "id"),
     prevent_initial_call=True,
+    background=True,
+    running=[
+        (Output("dash-fetch-data", "disabled"), True, False),
+        (Output("dash-run-scan", "disabled"), True, False),
+    ],
+    progress=[Output("dash-fetch-progress", "children")],
 )
-def fetch_sp500_data(n_clicks):
+def fetch_sp500_data(set_progress, n_clicks, _progress_id):
     """Fetch 1 year of daily data for all S&P 500 tickers into the database."""
     try:
+        set_progress(dbc.Progress(value=0, label="Starting...", color="success",
+                                  className="mb-2", style={"height": "24px"}))
+
         fetcher = Fetcher()
         store = Store(settings.db_path)
         tickers = fetcher.get_sp500_tickers()
@@ -156,6 +171,7 @@ def fetch_sp500_data(n_clicks):
 
         if not to_fetch:
             store.close()
+            set_progress(html.Div())
             return dbc.Alert(
                 f"All {len(tickers)} S&P 500 tickers already up to date.",
                 color="info", dismissable=True,
@@ -163,7 +179,8 @@ def fetch_sp500_data(n_clicks):
 
         fetched = 0
         errors = 0
-        for ticker in to_fetch:
+        total = len(to_fetch)
+        for i, ticker in enumerate(to_fetch):
             try:
                 df = fetcher.fetch_daily(ticker, period="1y")
                 if not df.empty:
@@ -172,7 +189,17 @@ def fetch_sp500_data(n_clicks):
             except Exception:
                 errors += 1
 
+            pct = int((i + 1) / total * 100)
+            set_progress(dbc.Progress(
+                value=pct,
+                label=f"Fetching {i + 1}/{total} ({ticker})",
+                color="success",
+                className="mb-2",
+                style={"height": "24px"},
+            ))
+
         store.close()
+        set_progress(html.Div())
 
         msg = f"Fetched {fetched} tickers ({len(up_to_date)} already cached"
         if errors:
@@ -181,6 +208,7 @@ def fetch_sp500_data(n_clicks):
 
         return dbc.Alert(msg, color="success", dismissable=True)
     except Exception as e:
+        set_progress(html.Div())
         return dbc.Alert(f"Fetch error: {e}", color="danger", dismissable=True)
 
 

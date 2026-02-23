@@ -1,6 +1,10 @@
 import dash
-from dash import html, dcc
+from dash import html, dcc, DiskcacheManager
 import dash_bootstrap_components as dbc
+import diskcache
+
+cache = diskcache.Cache("./.cache")
+background_callback_manager = DiskcacheManager(cache)
 
 app = dash.Dash(
     __name__,
@@ -8,6 +12,7 @@ app = dash.Dash(
     pages_folder="ui/pages",
     external_stylesheets=[dbc.themes.DARKLY],
     suppress_callback_exceptions=True,
+    background_callback_manager=background_callback_manager,
 )
 
 sidebar = dbc.Nav(
