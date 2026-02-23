@@ -14,7 +14,7 @@ dash.register_page(__name__, path="/", name="Dashboard")
 layout = dbc.Container([
     html.H2("Dashboard"),
 
-    # Screener controls + Run Scan
+    # Screener controls + Run Scan + Last Scan status
     dbc.Card([
         dbc.CardHeader("Screener"),
         dbc.CardBody([
@@ -42,27 +42,21 @@ layout = dbc.Container([
                 ], width=3),
             ], align="end"),
             html.Div(id="dash-scan-output", className="mt-3"),
+            html.Div(id="scan-status", className="mt-2"),
         ]),
     ], className="mb-3"),
 
-    dbc.Row([
-        dbc.Col([
-            dbc.Card([
-                dbc.CardHeader("Today's Top Signals"),
-                dbc.CardBody(id="signals-table"),
-            ]),
-        ], width=7),
-        dbc.Col([
-            dbc.Card([
-                dbc.CardHeader("Watchlist"),
-                dbc.CardBody(id="watchlist-summary"),
-            ]),
-            dbc.Card([
-                dbc.CardHeader("Last Scan"),
-                dbc.CardBody(id="scan-status"),
-            ], className="mt-3"),
-        ], width=5),
-    ]),
+    # Top Signals — full width
+    dbc.Card([
+        dbc.CardHeader("Today's Top Signals"),
+        dbc.CardBody(id="signals-table"),
+    ], className="mb-3"),
+
+    # Watchlist — full width
+    dbc.Card([
+        dbc.CardHeader("Watchlist"),
+        dbc.CardBody(id="watchlist-summary"),
+    ], className="mb-3"),
     dcc.Interval(id="dashboard-refresh", interval=60_000, n_intervals=0),
 ], fluid=True)
 
