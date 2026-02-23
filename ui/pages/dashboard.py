@@ -157,10 +157,53 @@ def update_watchlist(n):
     try:
         store = Store(settings.db_path)
         wl = store.get_watchlist()
-        store.close()
         if wl.empty:
+            store.close()
             return html.P("Watchlist is empty.")
-        return html.Ul([html.Li(t) for t in wl["ticker"]])
+
+        today = date.today()
+        start = today - timedelta(days=10)
+        rows = []
+        for ticker in wl["ticker"]:
+            df = store.load_daily_prices(ticker, start, today)
+            if df.empty or len(df) < 2:
+                continue
+            latest = df.iloc[-1]
+            prev_close = df.iloc[-2]["close"]
+            day_change = latest["close"] - prev_close
+            day_change_pct = (day_change / prev_close) * 100 if prev_close else 0
+            rows.append({
+                "Ticker": ticker,
+                "Open": round(latest["open"], 2),
+                "High": round(latest["high"], 2),
+                "Low": round(latest["low"], 2),
+                "Close": round(latest["close"], 2),
+                "Change": round(day_change, 2),
+                "Change %": round(day_change_pct, 2),
+                "Volume": int(latest["volume"]),
+            })
+
+        store.close()
+
+        if not rows:
+            return html.P("No price data available for watchlist tickers.")
+
+        return dash_table.DataTable(
+            data=rows,
+            columns=[{"name": c, "id": c} for c in rows[0].keys()],
+            sort_action="native",
+            style_table={"overflowX": "auto"},
+            style_data_conditional=[
+                {"if": {"filter_query": "{Change %} > 0", "column_id": "Change %"},
+                 "color": "#00d632"},
+                {"if": {"filter_query": "{Change %} < 0", "column_id": "Change %"},
+                 "color": "#ff3b30"},
+                {"if": {"filter_query": "{Change} > 0", "column_id": "Change"},
+                 "color": "#00d632"},
+                {"if": {"filter_query": "{Change} < 0", "column_id": "Change"},
+                 "color": "#ff3b30"},
+            ],
+        )
     except Exception:
         return html.P("No data available.")
 
