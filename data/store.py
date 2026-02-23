@@ -9,6 +9,7 @@ class Store:
     def __init__(self, db_path: str = "stock_analyzer.db"):
         self.conn = sqlite3.connect(db_path, detect_types=sqlite3.PARSE_DECLTYPES)
         self.conn.execute("PRAGMA journal_mode=WAL")
+        self.conn.execute("PRAGMA foreign_keys=ON")
         self._create_tables()
 
     def _create_tables(self):
@@ -74,6 +75,19 @@ class Store:
                 accuracy REAL,
                 f1_score REAL,
                 feature_importances TEXT
+            );
+            CREATE TABLE IF NOT EXISTS portfolios (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT UNIQUE NOT NULL,
+                default_strategy TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE IF NOT EXISTS portfolio_stocks (
+                portfolio_id INTEGER NOT NULL,
+                ticker TEXT NOT NULL,
+                strategy_override TEXT,
+                PRIMARY KEY (portfolio_id, ticker),
+                FOREIGN KEY (portfolio_id) REFERENCES portfolios(id) ON DELETE CASCADE
             );
         """)
         self.conn.commit()
@@ -169,6 +183,52 @@ class Store:
             data = [list(row) for row in data_iter]
             conn.executemany(sql, data)
         return method
+
+    def create_portfolio(self, name: str, default_strategy: str) -> int:
+        cur = self.conn.execute(
+            "INSERT INTO portfolios (name, default_strategy) VALUES (?, ?)",
+            (name, default_strategy),
+        )
+        self.conn.commit()
+        return cur.lastrowid
+
+    def list_portfolios(self) -> list[dict]:
+        cur = self.conn.execute("SELECT id, name, default_strategy FROM portfolios ORDER BY name")
+        return [{"id": r[0], "name": r[1], "default_strategy": r[2]} for r in cur.fetchall()]
+
+    def get_portfolio(self, portfolio_id: int) -> Optional[dict]:
+        cur = self.conn.execute(
+            "SELECT id, name, default_strategy FROM portfolios WHERE id = ?", (portfolio_id,)
+        )
+        row = cur.fetchone()
+        if not row:
+            return None
+        return {"id": row[0], "name": row[1], "default_strategy": row[2]}
+
+    def delete_portfolio(self, portfolio_id: int):
+        self.conn.execute("DELETE FROM portfolios WHERE id = ?", (portfolio_id,))
+        self.conn.commit()
+
+    def add_portfolio_stock(self, portfolio_id: int, ticker: str, strategy_override: Optional[str] = None):
+        self.conn.execute(
+            "INSERT OR REPLACE INTO portfolio_stocks (portfolio_id, ticker, strategy_override) VALUES (?, ?, ?)",
+            (portfolio_id, ticker, strategy_override),
+        )
+        self.conn.commit()
+
+    def remove_portfolio_stock(self, portfolio_id: int, ticker: str):
+        self.conn.execute(
+            "DELETE FROM portfolio_stocks WHERE portfolio_id = ? AND ticker = ?",
+            (portfolio_id, ticker),
+        )
+        self.conn.commit()
+
+    def get_portfolio_stocks(self, portfolio_id: int) -> list[dict]:
+        cur = self.conn.execute(
+            "SELECT ticker, strategy_override FROM portfolio_stocks WHERE portfolio_id = ? ORDER BY ticker",
+            (portfolio_id,),
+        )
+        return [{"ticker": r[0], "strategy_override": r[1]} for r in cur.fetchall()]
 
     def close(self):
         self.conn.close()

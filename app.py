@@ -15,30 +15,33 @@ sidebar = dbc.Nav(
         dbc.NavLink("Dashboard", href="/", active="exact"),
         dbc.NavLink("Stock Detail", href="/stock", active="exact"),
         dbc.NavLink("Backtesting", href="/backtest", active="exact"),
+        dbc.NavLink("Portfolios", href="/portfolios", active="exact"),
         dbc.NavLink("Settings", href="/settings", active="exact"),
     ],
     vertical=True,
     pills=True,
-    className="bg-dark",
 )
 
 app.layout = dbc.Container([
     dbc.Row([
         dbc.Col(
             html.Div([
-                html.H4("Stock Analyzer", className="text-light p-3"),
+                html.Div([
+                    html.Span("Stock Analyzer"),
+                    html.Span("Terminal", className="brand-sub"),
+                ], className="sidebar-brand"),
                 sidebar,
             ]),
             width=2,
-            className="bg-dark vh-100 position-fixed",
+            className="sidebar-container vh-100 position-fixed",
         ),
         dbc.Col(
-            dash.page_container,
+            html.Div(dash.page_container, style={"padding": "28px 36px"}),
             width=10,
-            className="ms-auto p-4",
+            className="offset-2",
         ),
     ]),
-], fluid=True, className="bg-dark text-light")
+], fluid=True)
 
 if __name__ == "__main__":
     app.run(debug=True)

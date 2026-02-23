@@ -76,3 +76,10 @@ class CompositeStrategy(Strategy):
         result[combined > 0.3] = "BUY"
         result[combined < -0.3] = "SELL"
         return result
+
+
+STRATEGIES = {
+    "SMA Crossover": SmaCrossover,
+    "RSI + Bollinger": RsiBollinger,
+    "Composite": lambda: CompositeStrategy([SmaCrossover(), RsiBollinger()]),
+}

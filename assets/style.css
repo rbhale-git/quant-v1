@@ -1,0 +1,629 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap');
+
+/* ======================================================
+   TERMINAL — Bloomberg / Robinhood institutional theme
+   ====================================================== */
+
+:root {
+    --bg-black: #000000;
+    --bg-surface: #0a0a0a;
+    --bg-card: #131313;
+    --bg-elevated: #1c1c1c;
+    --bg-input: #151515;
+    --border: #262626;
+    --border-focus: #383838;
+    --text-primary: #f0f0f0;
+    --text-secondary: #999999;
+    --text-muted: #5a5a5a;
+    --accent-green: #00d632;
+    --accent-green-dim: rgba(0, 214, 50, 0.12);
+    --accent-red: #ff3b30;
+    --accent-red-dim: rgba(255, 59, 48, 0.12);
+    --accent-amber: #ff9f0a;
+    --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+    --font-body: 'DM Sans', -apple-system, sans-serif;
+}
+
+/* ---- Base ---- */
+body, html {
+    background-color: var(--bg-black) !important;
+    color: var(--text-primary) !important;
+    font-family: var(--font-body) !important;
+    font-size: 15px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ---- Scrollbar ---- */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-black); }
+::-webkit-scrollbar-thumb { background: #222; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #333; }
+
+/* ---- Typography ---- */
+h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-mono) !important;
+    font-weight: 600 !important;
+    color: var(--text-primary) !important;
+    letter-spacing: -0.02em;
+}
+
+h2 {
+    font-size: 1.25rem !important;
+    text-transform: uppercase;
+    letter-spacing: 0.08em !important;
+    color: var(--text-secondary) !important;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 12px;
+    margin-bottom: 24px !important;
+}
+
+h4 {
+    font-size: 1rem !important;
+    letter-spacing: 0.1em !important;
+    text-transform: uppercase;
+}
+
+h5 {
+    font-size: 1.1rem !important;
+    font-family: var(--font-mono) !important;
+}
+
+label, .form-label {
+    font-family: var(--font-mono) !important;
+    font-size: 0.8rem !important;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted) !important;
+    font-weight: 500 !important;
+    margin-bottom: 6px !important;
+}
+
+p {
+    font-family: var(--font-body) !important;
+    color: var(--text-secondary) !important;
+    font-size: 15px;
+    line-height: 1.6;
+}
+
+li {
+    font-family: var(--font-body) !important;
+    color: var(--text-secondary) !important;
+    font-size: 14px;
+    line-height: 1.8;
+}
+
+.text-muted {
+    color: var(--text-muted) !important;
+    font-family: var(--font-mono) !important;
+    font-size: 0.85rem !important;
+}
+
+/* ---- Sidebar ---- */
+.sidebar-container {
+    background-color: var(--bg-black) !important;
+    border-right: 1px solid var(--border) !important;
+    padding-top: 0 !important;
+    z-index: 1000;
+    top: 0;
+    left: 0;
+    overflow-y: auto;
+}
+
+.sidebar-brand {
+    font-family: var(--font-mono) !important;
+    font-size: 1.1rem !important;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent-green) !important;
+    padding: 28px 20px 24px 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 12px;
+}
+
+.sidebar-brand .brand-sub {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    letter-spacing: 0.15em;
+    margin-top: 4px;
+}
+
+.nav-pills .nav-link {
+    font-family: var(--font-mono) !important;
+    font-size: 0.95rem !important;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted) !important;
+    padding: 14px 20px !important;
+    border-radius: 0 !important;
+    border-left: 2px solid transparent;
+    transition: all 0.15s ease;
+}
+
+.nav-pills .nav-link:hover {
+    color: var(--text-secondary) !important;
+    background-color: transparent !important;
+    border-left-color: var(--border-focus);
+}
+
+.nav-pills .nav-link.active {
+    color: var(--accent-green) !important;
+    background-color: transparent !important;
+    border-left-color: var(--accent-green) !important;
+}
+
+/* ---- Cards ---- */
+.card {
+    background-color: var(--bg-card) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+}
+
+.card-header {
+    background-color: var(--bg-elevated) !important;
+    border-bottom: 1px solid var(--border) !important;
+    border-radius: 0 !important;
+    font-family: var(--font-mono) !important;
+    font-size: 0.82rem !important;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted) !important;
+    padding: 14px 20px !important;
+    font-weight: 500;
+}
+
+.card-body {
+    background-color: var(--bg-card) !important;
+    padding: 20px !important;
+}
+
+/* Only the portfolio config card needs overflow visible for in-cell dropdowns */
+#pf-config-card,
+#pf-config-card .card-body {
+    overflow: visible !important;
+}
+
+/* ---- Buttons ---- */
+.btn {
+    font-family: var(--font-mono) !important;
+    font-size: 0.85rem !important;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border-radius: 0 !important;
+    padding: 10px 24px !important;
+    font-weight: 600 !important;
+    transition: all 0.12s ease;
+    border: none !important;
+}
+
+.btn-primary {
+    background-color: var(--accent-green) !important;
+    color: #000 !important;
+}
+.btn-primary:hover {
+    background-color: #00ff3c !important;
+    box-shadow: 0 0 20px rgba(0, 214, 50, 0.2);
+}
+
+.btn-success {
+    background-color: var(--bg-elevated) !important;
+    color: var(--accent-green) !important;
+    border: 1px solid var(--accent-green) !important;
+}
+.btn-success:hover {
+    background-color: var(--accent-green-dim) !important;
+}
+
+.btn-danger {
+    background-color: var(--bg-elevated) !important;
+    color: var(--accent-red) !important;
+    border: 1px solid #3a1515 !important;
+}
+.btn-danger:hover {
+    background-color: var(--accent-red-dim) !important;
+    border-color: var(--accent-red) !important;
+}
+
+.btn-warning {
+    background-color: var(--bg-elevated) !important;
+    color: var(--accent-amber) !important;
+    border: 1px solid #3a2a00 !important;
+}
+.btn-warning:hover {
+    background-color: rgba(255, 159, 10, 0.1) !important;
+    border-color: var(--accent-amber) !important;
+}
+
+.btn-sm {
+    font-size: 0.78rem !important;
+    padding: 8px 16px !important;
+}
+
+/* ---- Inputs ---- */
+.form-control, input[type="text"], input[type="number"] {
+    background-color: var(--bg-input) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 0 !important;
+    color: var(--text-primary) !important;
+    font-family: var(--font-mono) !important;
+    font-size: 0.9rem !important;
+    padding: 10px 14px !important;
+    height: auto !important;
+    transition: border-color 0.15s ease;
+}
+
+.form-control:focus, input:focus {
+    border-color: var(--accent-green) !important;
+    box-shadow: 0 0 0 1px rgba(0, 214, 50, 0.15) !important;
+    outline: none !important;
+}
+
+.form-control::placeholder, input::placeholder {
+    color: var(--text-muted) !important;
+    font-style: normal;
+}
+
+.input-group {
+    border-radius: 0 !important;
+}
+
+.input-group .btn {
+    border-left: 1px solid var(--border) !important;
+}
+
+/* ---- Dropdowns (Dash Select) ---- */
+.Select-control,
+.dash-dropdown .Select-control {
+    background-color: var(--bg-input) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 0 !important;
+    color: var(--text-primary) !important;
+    font-family: var(--font-mono) !important;
+    font-size: 0.9rem !important;
+    height: 42px !important;
+}
+
+.Select-control:hover {
+    border-color: var(--border-focus) !important;
+}
+
+.is-focused .Select-control {
+    border-color: var(--accent-green) !important;
+    box-shadow: 0 0 0 1px rgba(0, 214, 50, 0.15) !important;
+}
+
+.Select-value-label,
+.Select-placeholder,
+.dash-dropdown .Select-value-label {
+    color: var(--text-primary) !important;
+    font-family: var(--font-mono) !important;
+    font-size: 0.9rem !important;
+    line-height: 42px !important;
+}
+
+.Select-value {
+    line-height: 42px !important;
+}
+
+.dash-dropdown .Select-placeholder {
+    color: var(--text-muted) !important;
+    line-height: 42px !important;
+}
+
+.Select-input {
+    height: 40px !important;
+}
+
+.Select-input > input {
+    color: var(--text-primary) !important;
+    font-family: var(--font-mono) !important;
+    line-height: 40px !important;
+}
+
+.Select-arrow-zone .Select-arrow {
+    border-color: var(--text-muted) transparent transparent !important;
+}
+
+.Select-menu-outer,
+.dash-dropdown .Select-menu-outer {
+    background-color: var(--bg-elevated) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 0 !important;
+    border-top: none !important;
+    margin-top: -1px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5) !important;
+}
+
+.VirtualizedSelectOption {
+    background-color: var(--bg-elevated) !important;
+    color: var(--text-secondary) !important;
+    font-family: var(--font-mono) !important;
+    font-size: 0.88rem !important;
+    padding: 10px 14px !important;
+    cursor: pointer;
+}
+
+.VirtualizedSelectFocusedOption {
+    background-color: var(--accent-green-dim) !important;
+    color: var(--accent-green) !important;
+}
+
+.Select-clear-zone { color: var(--text-muted) !important; }
+
+/* ---- DataTables ---- */
+.dash-spreadsheet-container .dash-spreadsheet-inner {
+    border: 1px solid var(--border) !important;
+}
+
+.dash-spreadsheet-container {
+    overflow: visible !important;
+}
+
+.dash-spreadsheet .dash-header {
+    background-color: var(--bg-elevated) !important;
+    color: var(--text-muted) !important;
+    font-family: var(--font-mono) !important;
+    font-size: 0.8rem !important;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 600 !important;
+    border-bottom: 1px solid var(--border) !important;
+    padding: 12px 16px !important;
+    text-align: left !important;
+}
+
+.dash-spreadsheet .dash-cell {
+    background-color: var(--bg-card) !important;
+    color: var(--text-primary) !important;
+    font-family: var(--font-mono) !important;
+    font-size: 0.9rem !important;
+    border-bottom: 1px solid var(--border) !important;
+    border-right: 1px solid var(--border) !important;
+    padding: 10px 16px !important;
+    cursor: pointer;
+}
+
+.dash-spreadsheet .dash-cell.focused {
+    border: 1px solid var(--accent-green) !important;
+    box-shadow: inset 0 0 0 1px var(--accent-green) !important;
+}
+
+.dash-spreadsheet td.cell--selected {
+    background-color: var(--accent-green-dim) !important;
+}
+
+/* DataTable in-cell dropdown visibility fix */
+.dash-spreadsheet .Select-menu-outer {
+    position: absolute !important;
+    z-index: 9999 !important;
+    display: block !important;
+    overflow: visible !important;
+    background-color: var(--bg-elevated) !important;
+    border: 1px solid var(--border) !important;
+    min-width: 200px !important;
+}
+
+.dash-spreadsheet .Select-control {
+    background-color: var(--bg-card) !important;
+    border: none !important;
+    color: var(--text-primary) !important;
+    font-family: var(--font-mono) !important;
+    font-size: 0.9rem !important;
+}
+
+.dash-spreadsheet .Select-value-label {
+    color: var(--text-primary) !important;
+    font-family: var(--font-mono) !important;
+}
+
+.dash-spreadsheet .Select-placeholder {
+    color: var(--text-muted) !important;
+}
+
+.dash-spreadsheet .Select.is-open {
+    position: relative;
+    z-index: 9999;
+}
+
+.dash-spreadsheet .Select-menu-outer {
+    background-color: var(--bg-elevated) !important;
+}
+
+.dash-spreadsheet .Select-option,
+.dash-spreadsheet .Select-option.is-focused {
+    background-color: var(--bg-elevated) !important;
+    color: var(--text-primary) !important;
+    font-family: var(--font-mono) !important;
+}
+
+.dash-spreadsheet .Select-option.is-focused {
+    background-color: var(--accent-green-dim) !important;
+    color: var(--accent-green) !important;
+}
+
+/* row selection checkbox */
+.dash-spreadsheet input[type="checkbox"] {
+    accent-color: var(--accent-green);
+    width: 16px;
+    height: 16px;
+}
+
+/* ---- Date Picker ---- */
+.DateInput_input {
+    background-color: var(--bg-input) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 0 !important;
+    font-family: var(--font-mono) !important;
+    font-size: 0.9rem !important;
+    padding: 9px 12px !important;
+    line-height: 1.4 !important;
+}
+
+.DateInput_input__focused {
+    border-color: var(--accent-green) !important;
+}
+
+.SingleDatePickerInput {
+    background-color: var(--bg-input) !important;
+    border: none !important;
+    border-radius: 0 !important;
+}
+
+.CalendarDay__selected {
+    background: var(--accent-green) !important;
+    border-color: var(--accent-green) !important;
+    color: #000 !important;
+}
+
+.DayPicker, .CalendarMonth, .CalendarMonthGrid {
+    background: var(--bg-elevated) !important;
+}
+
+.CalendarDay__default {
+    background: var(--bg-card) !important;
+    border-color: var(--border) !important;
+    color: var(--text-secondary) !important;
+}
+
+.CalendarDay__default:hover {
+    background: var(--accent-green-dim) !important;
+    color: var(--accent-green) !important;
+}
+
+.DayPickerNavigation_button__default {
+    background: var(--bg-elevated) !important;
+    border-color: var(--border) !important;
+}
+
+.CalendarMonth_caption {
+    color: var(--text-primary) !important;
+    font-family: var(--font-mono) !important;
+    font-size: 0.9rem !important;
+}
+
+.DayPicker_weekHeader_li small {
+    color: var(--text-muted) !important;
+    font-family: var(--font-mono) !important;
+}
+
+/* ---- Modals ---- */
+.modal-content {
+    background-color: var(--bg-card) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 0 !important;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.7) !important;
+}
+
+.modal-header {
+    border-bottom: 1px solid var(--border) !important;
+    font-family: var(--font-mono) !important;
+    font-size: 0.9rem !important;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-secondary) !important;
+    padding: 16px 20px !important;
+}
+
+.modal-header .btn-close {
+    filter: invert(1) !important;
+}
+
+.modal-footer {
+    border-top: 1px solid var(--border) !important;
+    padding: 16px 20px !important;
+}
+
+.modal-body {
+    color: var(--text-primary) !important;
+    padding: 20px !important;
+}
+
+/* ---- Loading spinner ---- */
+.dash-spinner .dash-default-spinner {
+    border-color: var(--accent-green) !important;
+    border-right-color: transparent !important;
+}
+
+/* ---- Horizontal rule ---- */
+hr {
+    border-color: var(--border) !important;
+    opacity: 1 !important;
+}
+
+/* ---- Container overrides ---- */
+.container-fluid {
+    background-color: var(--bg-black) !important;
+}
+
+/* ---- Plotly chart ---- */
+.js-plotly-plot .plotly {
+    outline: 1px solid #262626;
+}
+
+/* ---- Misc. ---- */
+.bg-dark {
+    background-color: var(--bg-black) !important;
+}
+
+.text-light {
+    color: var(--text-primary) !important;
+}
+
+/* ---- Live indicator dot ---- */
+@keyframes pulse-green {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+.live-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    background: var(--accent-green);
+    border-radius: 50%;
+    margin-right: 6px;
+    animation: pulse-green 2s ease-in-out infinite;
+    vertical-align: middle;
+}
+
+/* ---- Status colors for data ---- */
+.positive { color: var(--accent-green) !important; }
+.negative { color: var(--accent-red) !important; }
+
+/* ---- Row spacing ---- */
+.row {
+    --bs-gutter-x: 1.5rem;
+}
+
+.mb-3 {
+    margin-bottom: 1.25rem !important;
+}
+
+/* ---- Tooltips ---- */
+.tooltip-inner {
+    background-color: var(--bg-elevated) !important;
+    color: var(--text-primary) !important;
+    font-family: var(--font-body) !important;
+    font-size: 0.82rem !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 0 !important;
+    padding: 10px 14px !important;
+    max-width: 280px;
+    text-align: left;
+    line-height: 1.5;
+}
+
+.tooltip .tooltip-arrow::before {
+    border-bottom-color: var(--bg-elevated) !important;
+}
+
+.bs-tooltip-bottom .tooltip-arrow::before {
+    border-bottom-color: var(--bg-elevated) !important;
+}
+
+.bs-tooltip-top .tooltip-arrow::before {
+    border-top-color: var(--bg-elevated) !important;
+}

@@ -49,6 +49,7 @@ class StockScheduler:
 
     def run_daily_screener(self):
         logger.info("Running daily screener...")
+        import pandas as pd
         from data.fetcher import Fetcher
         from data.store import Store
         from data.screener import Screener
@@ -59,6 +60,7 @@ class StockScheduler:
         screener = Screener()
 
         tickers = fetcher.get_sp500_tickers()
+        frames = []
         for ticker in tickers:
             try:
                 df = fetcher.fetch_daily(ticker, period="1y")
@@ -66,11 +68,28 @@ class StockScheduler:
                     continue
                 store.save_daily_prices(df)
                 enriched = compute_all_indicators(df)
+                enriched["ticker"] = ticker
+                frames.append(enriched)
             except Exception as e:
                 logger.error(f"Error fetching {ticker}: {e}")
 
+        if frames:
+            universe = pd.concat(frames, ignore_index=True)
+            passed = screener.screen(universe)
+            passed_tickers = passed["ticker"].unique()
+            logger.info(f"Screener passed {len(passed_tickers)} stocks.")
+            for t in passed_tickers:
+                store.add_to_watchlist(t, source="screener")
+
+            # Generate signals for passed stocks
+            from run_pipeline import run_signals
+            store.close()
+            run_signals(list(passed_tickers))
+        else:
+            logger.warning("No data fetched for screening.")
+            store.close()
+
         logger.info("Daily screener complete.")
-        store.close()
 
     def run_hourly_watchlist_update(self):
         logger.info("Running hourly watchlist update...")
@@ -94,6 +113,27 @@ class StockScheduler:
 
     def run_weekly_retraining(self):
         logger.info("Running weekly ML retraining...")
+        from data.fetcher import Fetcher
+        from data.store import Store
+
+        store = Store(settings.db_path)
+        fetcher = Fetcher()
+        watchlist = store.get_watchlist()
+
+        if watchlist.empty:
+            logger.warning("Watchlist empty, skipping retraining.")
+            store.close()
+            return
+
+        for _, row in watchlist.iterrows():
+            try:
+                df = fetcher.fetch_daily(row["ticker"], period="2y")
+                if not df.empty:
+                    store.save_daily_prices(df)
+            except Exception as e:
+                logger.error(f"Error refreshing {row['ticker']}: {e}")
+
+        store.close()
         logger.info("Weekly retraining complete.")
 
     def shutdown(self):

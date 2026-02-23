@@ -1,3 +1,4 @@
+import os
 import dash
 from dash import html, dcc, callback, Input, Output, State
 import dash_bootstrap_components as dbc
@@ -13,13 +14,13 @@ layout = dbc.Container([
             dbc.Card([
                 dbc.CardHeader("Screener Thresholds"),
                 dbc.CardBody([
-                    dbc.Label("Min Avg Volume"),
+                    dbc.Label("Min Avg Volume", className="mt-2"),
                     dbc.Input(id="set-min-volume", type="number", value=settings.min_avg_volume),
-                    dbc.Label("ATR Threshold"),
+                    dbc.Label("ATR Threshold", className="mt-3"),
                     dbc.Input(id="set-atr", type="number", value=settings.atr_threshold, step=0.1),
-                    dbc.Label("RSI Buy Threshold"),
+                    dbc.Label("RSI Buy Threshold", className="mt-3"),
                     dbc.Input(id="set-rsi-buy", type="number", value=settings.rsi_buy_threshold),
-                    dbc.Label("RSI Sell Threshold"),
+                    dbc.Label("RSI Sell Threshold", className="mt-3"),
                     dbc.Input(id="set-rsi-sell", type="number", value=settings.rsi_sell_threshold),
                 ]),
             ]),
@@ -29,7 +30,7 @@ layout = dbc.Container([
                 dbc.CardHeader("Watchlist Management"),
                 dbc.CardBody([
                     dbc.Input(id="wl-ticker-input", placeholder="Add ticker..."),
-                    dbc.Button("Add", id="wl-add-btn", color="success", className="mt-2"),
+                    dbc.Button("Add", id="wl-add-btn", color="success", className="mt-3"),
                     html.Hr(),
                     html.Div(id="wl-current-list"),
                 ]),
@@ -60,3 +61,20 @@ def update_watchlist(n_clicks, ticker):
     if wl.empty:
         return html.P("No stocks in watchlist.")
     return html.Ul([html.Li(t) for t in wl["ticker"]])
+
+
+@callback(
+    Output("ml-status", "children"),
+    Input("wl-add-btn", "n_clicks"),
+    prevent_initial_call=False,
+)
+def update_ml_status(n_clicks):
+    model_path = os.path.join(settings.ml_model_dir, "stock_predictor.joblib")
+    if os.path.exists(model_path):
+        size_mb = os.path.getsize(model_path) / (1024 * 1024)
+        return html.Div([
+            html.P("Status: Trained", style={"color": "green"}),
+            html.P(f"Model path: {model_path}"),
+            html.P(f"Size: {size_mb:.1f} MB"),
+        ])
+    return html.P("Status: Not trained. Run pipeline to train model.", style={"color": "orange"})

@@ -6,8 +6,10 @@ from plotly.subplots import make_subplots
 import pandas as pd
 from datetime import date, timedelta
 from data.store import Store
+from data.fetcher import Fetcher
 from analysis.indicators import compute_all_indicators
 from config import settings
+from assets.plotly_theme import TERMINAL_LAYOUT_SUBPLOTS
 
 dash.register_page(__name__, path="/stock", name="Stock Detail")
 
@@ -16,11 +18,11 @@ layout = dbc.Container([
     dbc.Row([
         dbc.Col([
             dbc.Input(id="ticker-input", placeholder="Enter ticker (e.g. AAPL)", type="text"),
-        ], width=3),
+        ], width=5),
         dbc.Col([
             dbc.Button("Analyze", id="analyze-btn", color="primary"),
-        ], width=2),
-    ], className="mb-3"),
+        ], width=3),
+    ], className="mb-3", align="center"),
     dcc.Loading([
         html.Div(id="stock-chart"),
         html.Div(id="stock-indicators"),
@@ -47,7 +49,13 @@ def update_stock_chart(n_clicks, ticker):
         store.close()
 
         if df.empty:
-            return html.P(f"No data for {ticker}. Fetch data first.")
+            fetcher = Fetcher()
+            df = fetcher.fetch_daily(ticker, period="1y")
+            if df.empty:
+                return html.P(f"No data available for {ticker}.")
+            store = Store(settings.db_path)
+            store.save_daily_prices(df)
+            store.close()
 
         df = compute_all_indicators(df)
 
@@ -80,7 +88,7 @@ def update_stock_chart(n_clicks, ticker):
             fig.add_trace(go.Bar(x=df["date"], y=df["macd_histogram"], name="Histogram"), row=3, col=1)
 
         fig.update_layout(
-            template="plotly_dark", height=800,
+            **TERMINAL_LAYOUT_SUBPLOTS, height=800,
             xaxis_rangeslider_visible=False,
             title=f"{ticker} Analysis",
         )
