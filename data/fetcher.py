@@ -6,14 +6,35 @@ import yfinance as yf
 
 
 class Fetcher:
-    def get_sp500_tickers(self) -> list[str]:
-        url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
-        req = urllib.request.Request(url, headers={"User-Agent": "stock-analyzer/1.0"})
+    INDEX_SOURCES = {
+        "S&P 500": {
+            "url": "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies",
+            "table_index": 0,
+            "column": "Symbol",
+        },
+        "NASDAQ-100": {
+            "url": "https://en.wikipedia.org/wiki/Nasdaq-100",
+            "table_index": 4,
+            "column": "Ticker",
+        },
+        "Dow 30": {
+            "url": "https://en.wikipedia.org/wiki/Dow_Jones_Industrial_Average",
+            "table_index": 2,
+            "column": "Symbol",
+        },
+    }
+
+    def get_index_tickers(self, index_name: str = "S&P 500") -> list[str]:
+        source = self.INDEX_SOURCES[index_name]
+        req = urllib.request.Request(source["url"], headers={"User-Agent": "stock-analyzer/1.0"})
         with urllib.request.urlopen(req) as resp:
             html = resp.read().decode("utf-8")
-        table = pd.read_html(io.StringIO(html))[0]
-        tickers = table["Symbol"].str.replace(".", "-", regex=False).tolist()
+        table = pd.read_html(io.StringIO(html))[source["table_index"]]
+        tickers = table[source["column"]].str.replace(".", "-", regex=False).tolist()
         return sorted(tickers)
+
+    def get_sp500_tickers(self) -> list[str]:
+        return self.get_index_tickers("S&P 500")
 
     def fetch_daily(self, ticker: str, period: str = "2y", start: str = None, end: str = None) -> pd.DataFrame:
         t = yf.Ticker(ticker)

@@ -11,18 +11,33 @@ from config import settings
 
 dash.register_page(__name__, path="/", name="Dashboard")
 
+INDEX_OPTIONS = [
+    {"label": "S&P 500", "value": "S&P 500"},
+    {"label": "NASDAQ-100", "value": "NASDAQ-100"},
+    {"label": "Dow 30", "value": "Dow 30"},
+]
+
 layout = dbc.Container([
     html.H2("Dashboard"),
 
-    # Screener controls + Run Scan + Last Scan status
+    # Screener controls
     dbc.Card([
         dbc.CardHeader("Screener"),
         dbc.CardBody([
             dbc.Row([
                 dbc.Col([
+                    dbc.Label("Index"),
+                    dcc.Dropdown(
+                        id="dash-index-select",
+                        options=INDEX_OPTIONS,
+                        value="S&P 500",
+                        clearable=False,
+                    ),
+                ], width=2),
+                dbc.Col([
                     dbc.Label("Min Avg Volume"),
                     dbc.Input(id="dash-min-volume", type="number", value=settings.min_avg_volume),
-                ], width=3),
+                ], width=2),
                 dbc.Col([
                     dbc.Label("ATR Threshold"),
                     dbc.Input(id="dash-atr", type="number", value=settings.atr_threshold, step=0.1),
@@ -30,19 +45,19 @@ layout = dbc.Container([
                 dbc.Col([
                     dbc.Label("RSI Buy"),
                     dbc.Input(id="dash-rsi-buy", type="number", value=settings.rsi_buy_threshold),
-                ], width=2),
+                ], width=1),
                 dbc.Col([
                     dbc.Label("RSI Sell"),
                     dbc.Input(id="dash-rsi-sell", type="number", value=settings.rsi_sell_threshold),
-                ], width=2),
+                ], width=1),
                 dbc.Col([
                     dbc.Label("\u00a0"),
                     html.Br(),
                     html.Div([
                         dbc.Button("Run Scan", id="dash-run-scan", color="primary", className="me-2"),
-                        dbc.Button("Fetch S&P 500", id="dash-fetch-data", color="success", size="sm"),
+                        dbc.Button("Fetch Data", id="dash-fetch-data", color="success", size="sm"),
                     ], className="d-flex align-items-center"),
-                ], width=3),
+                ], width=4),
             ], align="end"),
             dcc.Loading(
                 html.Div(id="dash-scan-output", className="mt-3"),
@@ -73,16 +88,18 @@ layout = dbc.Container([
     [Output("dash-scan-output", "children"),
      Output("dashboard-refresh", "n_intervals")],
     Input("dash-run-scan", "n_clicks"),
-    [State("dash-min-volume", "value"),
+    [State("dash-index-select", "value"),
+     State("dash-min-volume", "value"),
      State("dash-atr", "value"),
      State("dash-rsi-buy", "value"),
      State("dash-rsi-sell", "value")],
     prevent_initial_call=True,
 )
-def run_scan(n_clicks, min_vol, atr_thresh, rsi_buy, rsi_sell):
-    """Screen all tickers already in the database — no network calls."""
+def run_scan(n_clicks, index_name, min_vol, atr_thresh, rsi_buy, rsi_sell):
+    """Screen tickers for the selected index using data already in the database."""
     try:
         store = Store(settings.db_path)
+        fetcher = Fetcher()
         screener = Screener(
             min_avg_volume=int(min_vol) if min_vol else None,
             atr_threshold=float(atr_thresh) if atr_thresh else None,
@@ -93,20 +110,22 @@ def run_scan(n_clicks, min_vol, atr_thresh, rsi_buy, rsi_sell):
         end = date.today()
         start = end - timedelta(days=365)
 
-        # Get all tickers that exist in the database
-        all_tickers = pd.read_sql_query(
+        # Get tickers for the selected index, filter to those in DB
+        index_tickers = set(fetcher.get_index_tickers(index_name))
+        db_tickers = set(pd.read_sql_query(
             "SELECT DISTINCT ticker FROM daily_prices", store.conn
-        )["ticker"].tolist()
+        )["ticker"].tolist())
+        tickers = sorted(index_tickers & db_tickers)
 
-        if not all_tickers:
+        if not tickers:
             store.close()
             return dbc.Alert(
-                "No data in database. Click 'Fetch S&P 500' first to download price data.",
+                f"No {index_name} data in database. Click 'Fetch Data' first.",
                 color="warning",
             ), no_update
 
         frames = []
-        for ticker in all_tickers:
+        for ticker in tickers:
             df = store.load_daily_prices(ticker, start, end)
             if df.empty or len(df) < 30:
                 continue
@@ -127,7 +146,11 @@ def run_scan(n_clicks, min_vol, atr_thresh, rsi_buy, rsi_sell):
 
         store.close()
 
-        msg = f"Scan complete — {len(passed_tickers)}/{len(all_tickers)} stocks passed: {', '.join(passed_tickers[:20])}"
+        missing = len(index_tickers) - len(tickers)
+        msg = f"{index_name} scan — {len(passed_tickers)}/{len(tickers)} stocks passed"
+        if missing:
+            msg += f" ({missing} not yet fetched)"
+        msg += f": {', '.join(passed_tickers[:20])}"
         if len(passed_tickers) > 20:
             msg += f" (+{len(passed_tickers) - 20} more)"
 
@@ -139,7 +162,8 @@ def run_scan(n_clicks, min_vol, atr_thresh, rsi_buy, rsi_sell):
 @callback(
     Output("dash-scan-output", "children", allow_duplicate=True),
     Input("dash-fetch-data", "n_clicks"),
-    State("dash-fetch-progress", "id"),
+    [State("dash-index-select", "value"),
+     State("dash-fetch-progress", "id")],
     prevent_initial_call=True,
     background=True,
     running=[
@@ -148,15 +172,16 @@ def run_scan(n_clicks, min_vol, atr_thresh, rsi_buy, rsi_sell):
     ],
     progress=[Output("dash-fetch-progress", "children")],
 )
-def fetch_sp500_data(set_progress, n_clicks, _progress_id):
-    """Fetch 1 year of daily data for all S&P 500 tickers into the database."""
+def fetch_index_data(set_progress, n_clicks, index_name, _progress_id):
+    """Fetch 1 year of daily data for the selected index into the database."""
     try:
-        set_progress(dbc.Progress(value=0, label="Starting...", color="success",
-                                  className="mb-2", style={"height": "24px"}))
+        set_progress(dbc.Progress(value=0, label=f"Loading {index_name} tickers...",
+                                  color="success", className="mb-2",
+                                  style={"height": "24px"}))
 
         fetcher = Fetcher()
         store = Store(settings.db_path)
-        tickers = fetcher.get_sp500_tickers()
+        tickers = fetcher.get_index_tickers(index_name)
 
         # Check which tickers already have recent data
         existing = pd.read_sql_query(
@@ -173,7 +198,7 @@ def fetch_sp500_data(set_progress, n_clicks, _progress_id):
             store.close()
             set_progress(html.Div())
             return dbc.Alert(
-                f"All {len(tickers)} S&P 500 tickers already up to date.",
+                f"All {len(tickers)} {index_name} tickers already up to date.",
                 color="info", dismissable=True,
             )
 
@@ -201,7 +226,7 @@ def fetch_sp500_data(set_progress, n_clicks, _progress_id):
         store.close()
         set_progress(html.Div())
 
-        msg = f"Fetched {fetched} tickers ({len(up_to_date)} already cached"
+        msg = f"{index_name}: fetched {fetched} tickers ({len(up_to_date)} already cached"
         if errors:
             msg += f", {errors} errors"
         msg += "). Click 'Run Scan' to screen them."
