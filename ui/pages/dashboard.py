@@ -38,7 +38,10 @@ layout = dbc.Container([
                 dbc.Col([
                     dbc.Label("\u00a0"),
                     html.Br(),
-                    dbc.Button("Run Scan", id="dash-run-scan", color="primary"),
+                    html.Div([
+                        dbc.Button("Run Scan", id="dash-run-scan", color="primary", className="me-2"),
+                        dbc.Button("Fetch S&P 500", id="dash-fetch-data", color="success", size="sm"),
+                    ], className="d-flex align-items-center"),
                 ], width=3),
             ], align="end"),
             html.Div(id="dash-scan-output", className="mt-3"),
@@ -72,9 +75,9 @@ layout = dbc.Container([
     prevent_initial_call=True,
 )
 def run_scan(n_clicks, min_vol, atr_thresh, rsi_buy, rsi_sell):
+    """Screen all tickers already in the database — no network calls."""
     try:
         store = Store(settings.db_path)
-        fetcher = Fetcher()
         screener = Screener(
             min_avg_volume=int(min_vol) if min_vol else None,
             atr_threshold=float(atr_thresh) if atr_thresh else None,
@@ -82,19 +85,24 @@ def run_scan(n_clicks, min_vol, atr_thresh, rsi_buy, rsi_sell):
             rsi_sell_threshold=float(rsi_sell) if rsi_sell else None,
         )
 
-        # Always scan the S&P 500 universe for opportunities
-        tickers = fetcher.get_sp500_tickers()
-
         end = date.today()
         start = end - timedelta(days=365)
 
+        # Get all tickers that exist in the database
+        all_tickers = pd.read_sql_query(
+            "SELECT DISTINCT ticker FROM daily_prices", store.conn
+        )["ticker"].tolist()
+
+        if not all_tickers:
+            store.close()
+            return dbc.Alert(
+                "No data in database. Click 'Fetch S&P 500' first to download price data.",
+                color="warning",
+            ), no_update
+
         frames = []
-        for ticker in tickers:
+        for ticker in all_tickers:
             df = store.load_daily_prices(ticker, start, end)
-            if df.empty:
-                df = fetcher.fetch_daily(ticker, period="1y")
-                if not df.empty:
-                    store.save_daily_prices(df)
             if df.empty or len(df) < 30:
                 continue
             df = compute_all_indicators(df)
@@ -103,7 +111,7 @@ def run_scan(n_clicks, min_vol, atr_thresh, rsi_buy, rsi_sell):
 
         if not frames:
             store.close()
-            return html.P("No data available to screen."), 0
+            return dbc.Alert("Not enough price history to screen.", color="warning"), no_update
 
         universe = pd.concat(frames, ignore_index=True)
         passed = screener.screen(universe)
@@ -114,13 +122,66 @@ def run_scan(n_clicks, min_vol, atr_thresh, rsi_buy, rsi_sell):
 
         store.close()
 
-        msg = f"Scan complete — {len(passed_tickers)} stocks passed: {', '.join(passed_tickers[:15])}"
-        if len(passed_tickers) > 15:
-            msg += f" (+{len(passed_tickers) - 15} more)"
+        msg = f"Scan complete — {len(passed_tickers)}/{len(all_tickers)} stocks passed: {', '.join(passed_tickers[:20])}"
+        if len(passed_tickers) > 20:
+            msg += f" (+{len(passed_tickers) - 20} more)"
 
         return dbc.Alert(msg, color="success", dismissable=True), 0
     except Exception as e:
         return dbc.Alert(f"Scan error: {e}", color="danger", dismissable=True), no_update
+
+
+@callback(
+    Output("dash-scan-output", "children", allow_duplicate=True),
+    Input("dash-fetch-data", "n_clicks"),
+    prevent_initial_call=True,
+)
+def fetch_sp500_data(n_clicks):
+    """Fetch 1 year of daily data for all S&P 500 tickers into the database."""
+    try:
+        fetcher = Fetcher()
+        store = Store(settings.db_path)
+        tickers = fetcher.get_sp500_tickers()
+
+        # Check which tickers already have recent data
+        existing = pd.read_sql_query(
+            "SELECT ticker, MAX(date) as last_date FROM daily_prices GROUP BY ticker",
+            store.conn,
+        )
+        recent_cutoff = str(date.today() - timedelta(days=3))
+        up_to_date = set(
+            existing[existing["last_date"] >= recent_cutoff]["ticker"].tolist()
+        )
+        to_fetch = [t for t in tickers if t not in up_to_date]
+
+        if not to_fetch:
+            store.close()
+            return dbc.Alert(
+                f"All {len(tickers)} S&P 500 tickers already up to date.",
+                color="info", dismissable=True,
+            )
+
+        fetched = 0
+        errors = 0
+        for ticker in to_fetch:
+            try:
+                df = fetcher.fetch_daily(ticker, period="1y")
+                if not df.empty:
+                    store.save_daily_prices(df)
+                    fetched += 1
+            except Exception:
+                errors += 1
+
+        store.close()
+
+        msg = f"Fetched {fetched} tickers ({len(up_to_date)} already cached"
+        if errors:
+            msg += f", {errors} errors"
+        msg += "). Click 'Run Scan' to screen them."
+
+        return dbc.Alert(msg, color="success", dismissable=True)
+    except Exception as e:
+        return dbc.Alert(f"Fetch error: {e}", color="danger", dismissable=True)
 
 
 @callback(
