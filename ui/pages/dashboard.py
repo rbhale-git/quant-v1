@@ -82,12 +82,8 @@ def run_scan(n_clicks, min_vol, atr_thresh, rsi_buy, rsi_sell):
             rsi_sell_threshold=float(rsi_sell) if rsi_sell else None,
         )
 
-        # Load watchlist tickers; fall back to fetching S&P 500 subset
-        wl = store.get_watchlist()
-        if not wl.empty:
-            tickers = wl["ticker"].tolist()
-        else:
-            tickers = fetcher.get_sp500_tickers()[:50]
+        # Always scan the S&P 500 universe for opportunities
+        tickers = fetcher.get_sp500_tickers()
 
         end = date.today()
         start = end - timedelta(days=365)
