@@ -14,6 +14,7 @@ app = dash.Dash(
     suppress_callback_exceptions=True,
     background_callback_manager=background_callback_manager,
 )
+server = app.server
 
 sidebar = dbc.Nav(
     [
@@ -49,4 +50,7 @@ app.layout = dbc.Container([
 ], fluid=True)
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    import os
+    port = int(os.environ.get("PORT", 8050))
+    debug = os.environ.get("RAILWAY_ENVIRONMENT") is None
+    app.run(host="0.0.0.0", port=port, debug=debug)
