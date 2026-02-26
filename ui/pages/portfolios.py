@@ -24,16 +24,188 @@ def _load_portfolio_options():
     return [{"label": p["name"], "value": p["id"]} for p in portfolios]
 
 
+def _ensure_sample_portfolio():
+    store = Store(settings.db_path)
+    portfolios = store.list_portfolios()
+    if any(p["name"] == "Sample Portfolio" for p in portfolios):
+        store.close()
+        return
+    pid = store.create_portfolio("Sample Portfolio", "SMA Crossover")
+    store.add_portfolio_stock(pid, "AAPL")
+    store.add_portfolio_stock(pid, "MSFT", "RSI + Bollinger")
+    store.add_portfolio_stock(pid, "JPM", "Composite")
+    store.add_portfolio_stock(pid, "JNJ")
+    store.add_portfolio_stock(pid, "XOM", "RSI + Bollinger")
+    store.close()
+
+
+def _run_backtest_for_portfolio(portfolio_id, start_date, end_date):
+    """Run backtest for a portfolio, return (results_component, chart_component)."""
+    store = Store(settings.db_path)
+    portfolio = store.get_portfolio(portfolio_id)
+    stocks = store.get_portfolio_stocks(portfolio_id)
+    if not portfolio or not stocks:
+        store.close()
+        return html.P("Portfolio is empty. Add stocks first."), ""
+
+    default_strategy = portfolio["default_strategy"]
+    results = []
+    equity_curves = {}
+
+    try:
+        for stock in stocks:
+            ticker = stock["ticker"]
+            strategy_name = stock["strategy_override"] or default_strategy
+
+            df = store.load_daily_prices(ticker, start_date, end_date)
+            if df.empty:
+                fetcher = Fetcher()
+                df = fetcher.fetch_daily(ticker, start=str(start_date), end=str(end_date))
+                if df.empty:
+                    results.append({"Ticker": ticker, "Strategy": strategy_name, "Error": "No data"})
+                    continue
+                store.save_daily_prices(df)
+
+            df = compute_all_indicators(df)
+            strategy_cls = STRATEGIES[strategy_name]
+            strategy = strategy_cls()
+
+            engine = BacktestEngine()
+            result = engine.run(df, strategy)
+
+            asset_change = (df["close"].iloc[-1] / df["close"].iloc[0]) - 1
+            alpha = result["total_return"] - asset_change
+
+            results.append({
+                "Ticker": ticker,
+                "Strategy": strategy_name,
+                "Total Return": f"{result['total_return']:.2%}",
+                "Asset Change": f"{asset_change:.2%}",
+                "Alpha": f"{alpha:+.2%}",
+                "Annualized": f"{result['annualized_return']:.2%}",
+                "Sharpe": f"{result['sharpe_ratio']:.2f}",
+                "Max DD": f"{result['max_drawdown']:.2%}",
+                "Win Rate": f"{result['win_rate']:.2%}",
+                "Trades": result["trade_count"],
+            })
+
+            eq = result["equity_curve"]
+            equity_curves[f"{ticker} ({strategy_name})"] = ((eq / eq.iloc[0]) - 1) * 100
+
+        store.close()
+
+        metrics_df = pd.DataFrame(results)
+        metrics_table = dash_table.DataTable(
+            data=metrics_df.to_dict("records"),
+            columns=[{"name": c, "id": c} for c in metrics_df.columns],
+        )
+
+        fig = go.Figure()
+        for i, (label, curve) in enumerate(equity_curves.items()):
+            fig.add_trace(go.Scatter(
+                x=list(range(len(curve))),
+                y=curve,
+                mode="lines",
+                name=label,
+                line=dict(color=TERMINAL_COLORS[i % len(TERMINAL_COLORS)], width=1.5),
+            ))
+        fig.update_layout(
+            **TERMINAL_LAYOUT,
+            height=500,
+            title="Equity Curves — Normalized % Return",
+            xaxis_title="Trading Days",
+            yaxis_title="Return (%)",
+        )
+        fig.update_layout(legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
+
+        return (
+            dbc.Card([dbc.CardHeader("Comparison Metrics"), dbc.CardBody(metrics_table)], className="mb-3"),
+            dcc.Graph(figure=fig),
+        )
+    except Exception as e:
+        store.close()
+        return html.P(f"Error: {e}"), ""
+
+
 def layout():
+    _ensure_sample_portfolio()
+
+    # Pre-load sample portfolio for initial display
+    initial_id = None
+    initial_name = ""
+    initial_strategy_label = ""
+    initial_stocks = []
+    initial_config_style = {"display": "none"}
+    initial_results = ""
+    initial_chart = ""
+
+    store = Store(settings.db_path)
+    for p in store.list_portfolios():
+        if p["name"] == "Sample Portfolio":
+            initial_id = p["id"]
+            break
+    if initial_id:
+        portfolio = store.get_portfolio(initial_id)
+        stocks = store.get_portfolio_stocks(initial_id)
+        if portfolio and stocks:
+            initial_name = portfolio["name"]
+            initial_strategy_label = f"Default Strategy: {portfolio['default_strategy']}"
+            initial_stocks = [
+                {"ticker": s["ticker"], "strategy_override": s["strategy_override"] or ""}
+                for s in stocks
+            ]
+            initial_config_style = {"display": "block"}
+    store.close()
+
+    if initial_id and initial_stocks:
+        try:
+            initial_results, initial_chart = _run_backtest_for_portfolio(
+                initial_id, date.today() - timedelta(days=365), date.today()
+            )
+        except Exception:
+            pass
+
     return dbc.Container([
     html.H2("Portfolio Backtesting"),
+    dbc.Button(
+        "? Guide",
+        id="pf-guide-toggle",
+        color="link",
+        size="sm",
+        className="mb-2 p-0",
+        style={"fontSize": "0.85rem", "textDecoration": "none", "color": "#999"},
+    ),
+    dbc.Collapse(
+        dbc.Card(dbc.CardBody([
+            html.P(
+                "Portfolios let you group stocks together and backtest them as a collection. "
+                "You can assign different trading strategies to individual stocks to compare performance.",
+                className="mb-2",
+            ),
+            html.P(html.Strong("Getting started:"), className="mb-1"),
+            html.Ol([
+                html.Li("Click New to create a portfolio with a name and default strategy."),
+                html.Li("Add stocks by typing ticker symbols and clicking Add Stock."),
+                html.Li("Optionally set a Strategy Override for individual stocks using the dropdown in the table."),
+                html.Li("Click Save Overrides to persist your changes."),
+                html.Li("Set a date range and click Run Portfolio Backtest to see results."),
+            ], className="mb-2"),
+            html.P([
+                html.Strong("Results: "),
+                "The comparison table shows performance metrics for each stock. "
+                "The equity curves chart displays normalized percentage returns so you can compare stocks regardless of their price.",
+            ]),
+        ]), className="mb-3", style={"borderColor": "#2a2a2a"}),
+        id="pf-guide-collapse",
+        is_open=False,
+    ),
 
     # Portfolio selector row
     dbc.Card(dbc.CardBody(
         dbc.Row([
             dbc.Col([
                 dbc.Label("Portfolio"),
-                dcc.Dropdown(id="pf-selector", options=_load_portfolio_options(), placeholder="Select portfolio..."),
+                dcc.Dropdown(id="pf-selector", options=_load_portfolio_options(), value=initial_id, placeholder="Select portfolio..."),
             ], width=6),
             dbc.Col([
                 dbc.Label("\u00a0"),
@@ -62,8 +234,8 @@ def layout():
     dbc.Card(dbc.CardBody([
         dbc.Row([
             dbc.Col([
-                html.H5(id="pf-name-display"),
-                html.P(id="pf-strategy-display", className="text-muted"),
+                html.H5(initial_name, id="pf-name-display"),
+                html.P(initial_strategy_label, id="pf-strategy-display", className="text-muted"),
             ], width=6),
         ]),
         html.Hr(),
@@ -93,7 +265,7 @@ def layout():
                     "clearable": False,
                 },
             },
-            data=[],
+            data=initial_stocks,
             row_selectable="multi",
             selected_rows=[],
             style_table={"overflowX": "auto", "overflowY": "visible"},
@@ -106,7 +278,7 @@ def layout():
                 {"selector": ".row-selector-container", "rule": "display: none !important;"},
             ],
         ),
-    ]), id="pf-config-card", className="mb-3", style={"display": "none"}),
+    ]), id="pf-config-card", className="mb-3", style=initial_config_style),
 
     # Run controls
     dbc.Card(dbc.CardBody(
@@ -129,8 +301,8 @@ def layout():
 
     # Results
     dcc.Loading(html.Div([
-        html.Div(id="pf-results"),
-        html.Div(id="pf-chart"),
+        html.Div(initial_results, id="pf-results"),
+        html.Div(initial_chart, id="pf-chart"),
     ]), type="default"),
 ], fluid=True)
 
@@ -297,91 +469,14 @@ def remove_stocks(n_clicks, rows, selected_rows, portfolio_id):
 def run_portfolio_backtest(n_clicks, portfolio_id, start_date, end_date):
     if not portfolio_id:
         return html.P("Select a portfolio first."), ""
+    return _run_backtest_for_portfolio(portfolio_id, start_date, end_date)
 
-    store = Store(settings.db_path)
-    portfolio = store.get_portfolio(portfolio_id)
-    stocks = store.get_portfolio_stocks(portfolio_id)
-    if not portfolio or not stocks:
-        store.close()
-        return html.P("Portfolio is empty. Add stocks first."), ""
 
-    default_strategy = portfolio["default_strategy"]
-    results = []
-    equity_curves = {}
-
-    try:
-        for stock in stocks:
-            ticker = stock["ticker"]
-            strategy_name = stock["strategy_override"] or default_strategy
-
-            df = store.load_daily_prices(ticker, start_date, end_date)
-            if df.empty:
-                fetcher = Fetcher()
-                df = fetcher.fetch_daily(ticker, start=str(start_date), end=str(end_date))
-                if df.empty:
-                    results.append({"Ticker": ticker, "Strategy": strategy_name, "Error": "No data"})
-                    continue
-                store.save_daily_prices(df)
-
-            df = compute_all_indicators(df)
-            strategy_cls = STRATEGIES[strategy_name]
-            strategy = strategy_cls()
-
-            engine = BacktestEngine()
-            result = engine.run(df, strategy)
-
-            asset_change = (df["close"].iloc[-1] / df["close"].iloc[0]) - 1
-            alpha = result["total_return"] - asset_change
-
-            results.append({
-                "Ticker": ticker,
-                "Strategy": strategy_name,
-                "Total Return": f"{result['total_return']:.2%}",
-                "Asset Change": f"{asset_change:.2%}",
-                "Alpha": f"{alpha:+.2%}",
-                "Annualized": f"{result['annualized_return']:.2%}",
-                "Sharpe": f"{result['sharpe_ratio']:.2f}",
-                "Max DD": f"{result['max_drawdown']:.2%}",
-                "Win Rate": f"{result['win_rate']:.2%}",
-                "Trades": result["trade_count"],
-            })
-
-            # Normalize equity curve to % return
-            eq = result["equity_curve"]
-            equity_curves[f"{ticker} ({strategy_name})"] = ((eq / eq.iloc[0]) - 1) * 100
-
-        store.close()
-
-        # Metrics table
-        metrics_df = pd.DataFrame(results)
-        metrics_table = dash_table.DataTable(
-            data=metrics_df.to_dict("records"),
-            columns=[{"name": c, "id": c} for c in metrics_df.columns],
-        )
-
-        # Overlaid equity curves chart
-        fig = go.Figure()
-        for i, (label, curve) in enumerate(equity_curves.items()):
-            fig.add_trace(go.Scatter(
-                x=list(range(len(curve))),
-                y=curve,
-                mode="lines",
-                name=label,
-                line=dict(color=TERMINAL_COLORS[i % len(TERMINAL_COLORS)], width=1.5),
-            ))
-        fig.update_layout(
-            **TERMINAL_LAYOUT,
-            height=500,
-            title="Equity Curves — Normalized % Return",
-            xaxis_title="Trading Days",
-            yaxis_title="Return (%)",
-        )
-        fig.update_layout(legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
-
-        return (
-            dbc.Card([dbc.CardHeader("Comparison Metrics"), dbc.CardBody(metrics_table)], className="mb-3"),
-            dcc.Graph(figure=fig),
-        )
-    except Exception as e:
-        store.close()
-        return html.P(f"Error: {e}"), ""
+@callback(
+    Output("pf-guide-collapse", "is_open"),
+    Input("pf-guide-toggle", "n_clicks"),
+    State("pf-guide-collapse", "is_open"),
+    prevent_initial_call=True,
+)
+def toggle_pf_guide(n_clicks, is_open):
+    return not is_open
