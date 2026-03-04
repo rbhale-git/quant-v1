@@ -9,6 +9,38 @@ dash.register_page(__name__, path="/settings", name="Settings")
 
 layout = dbc.Container([
     html.H2("Settings"),
+    dbc.Button(
+        "? Guide",
+        id="set-guide-toggle",
+        color="link",
+        size="sm",
+        className="mb-2 p-0",
+        style={"fontSize": "0.85rem", "textDecoration": "none", "color": "#999"},
+    ),
+    dbc.Collapse(
+        dbc.Card(dbc.CardBody([
+            html.P(html.Strong("Screener Thresholds:"), className="mb-1"),
+            html.Ul([
+                html.Li([html.Strong("Min Avg Volume"), " — Minimum average daily volume a stock must have to pass screening. Filters out thinly-traded stocks."]),
+                html.Li([html.Strong("ATR Threshold"), " — Minimum Average True Range (daily volatility). Higher values select more volatile stocks with larger price swings."]),
+                html.Li([html.Strong("RSI Buy Threshold"), " — Stocks with RSI below this level are considered oversold and flagged as potential buys."]),
+                html.Li([html.Strong("RSI Sell Threshold"), " — Stocks with RSI above this level are considered overbought and flagged as potential sells."]),
+            ], className="mb-2"),
+            html.P([
+                html.Strong("Watchlist: "),
+                "Manually add ticker symbols to track. Stocks passing the screener are also added automatically. "
+                "Watchlist tickers appear on the Dashboard with live price data.",
+            ], className="mb-2"),
+            html.P([
+                html.Strong("ML Model Status: "),
+                "Shows whether the Random Forest prediction model has been trained. "
+                "The model uses technical indicators and sentiment data to generate BUY/SELL/HOLD signals with confidence scores. "
+                "Run the training pipeline (", html.Code("python run_pipeline.py"), ") to train or retrain it.",
+            ]),
+        ]), className="mb-3", style={"borderColor": "#2a2a2a"}),
+        id="set-guide-collapse",
+        is_open=False,
+    ),
     dbc.Row([
         dbc.Col([
             dbc.Card([
@@ -78,3 +110,13 @@ def update_ml_status(n_clicks):
             html.P(f"Size: {size_mb:.1f} MB"),
         ])
     return html.P("Status: Not trained. Run pipeline to train model.", style={"color": "orange"})
+
+
+@callback(
+    Output("set-guide-collapse", "is_open"),
+    Input("set-guide-toggle", "n_clicks"),
+    State("set-guide-collapse", "is_open"),
+    prevent_initial_call=True,
+)
+def toggle_set_guide(n_clicks, is_open):
+    return not is_open

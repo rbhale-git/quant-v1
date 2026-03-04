@@ -1,5 +1,5 @@
 import dash
-from dash import html, dcc, DiskcacheManager
+from dash import html, dcc, DiskcacheManager, callback, Input, Output, State, ctx
 import dash_bootstrap_components as dbc
 import diskcache
 
@@ -28,7 +28,110 @@ sidebar = dbc.Nav(
     pills=True,
 )
 
+welcome_modal = dbc.Modal(
+    [
+        dbc.ModalHeader(dbc.ModalTitle("Welcome to Stock Analyzer Terminal")),
+        dbc.ModalBody(
+            dbc.Tabs(
+                [
+                    dbc.Tab(
+                        html.Div([
+                            html.P(
+                                "A full-stack stock analysis platform that combines "
+                                "real-time market data, technical indicators, machine "
+                                "learning signals, and strategy backtesting — all in a "
+                                "single terminal-style dashboard."
+                            ),
+                            html.Ul([
+                                html.Li([
+                                    html.Strong("Dashboard"), ": ",
+                                    "Fetch stock data for major indices (S&P 500, "
+                                    "NASDAQ-100, Dow 30), run the screener to find "
+                                    "trading opportunities, and monitor your watchlist "
+                                    "in real time.",
+                                ]),
+                                html.Li([
+                                    html.Strong("Stock Detail"), ": ",
+                                    "Analyze any stock with interactive candlestick "
+                                    "charts and technical indicators including SMA, "
+                                    "RSI, MACD, and Bollinger Bands.",
+                                ]),
+                                html.Li([
+                                    html.Strong("Backtesting"), ": ",
+                                    "Test trading strategies against historical data "
+                                    "and see performance metrics like Sharpe ratio, "
+                                    "max drawdown, and win rate.",
+                                ]),
+                                html.Li([
+                                    html.Strong("Portfolios"), ": ",
+                                    "Group stocks into portfolios, assign per-stock "
+                                    "strategy overrides, and compare performance "
+                                    "across all holdings.",
+                                ]),
+                                html.Li([
+                                    html.Strong("Settings"), ": ",
+                                    "Configure screener thresholds, manage your "
+                                    "watchlist, and check ML model training status.",
+                                ]),
+                            ]),
+                        ]),
+                        label="Overview",
+                        tab_id="tab-overview",
+                    ),
+                    dbc.Tab(
+                        html.Div([
+                            html.Ol([
+                                html.Li(
+                                    "Go to Dashboard and select an index "
+                                    "(S&P 500, NASDAQ-100, or Dow 30)."
+                                ),
+                                html.Li(
+                                    "Click Fetch Data to download the latest stock "
+                                    "prices. This runs in the background and may "
+                                    "take a minute."
+                                ),
+                                html.Li(
+                                    "Click Run Scan to screen for stocks that match "
+                                    "your signal criteria (volume, volatility, momentum)."
+                                ),
+                                html.Li(
+                                    "Check the Top Signals table for buy/sell "
+                                    "recommendations ranked by confidence score."
+                                ),
+                                html.Li(
+                                    "Go to Stock Detail, enter a ticker symbol, and "
+                                    "click Analyze to view its full technical chart."
+                                ),
+                                html.Li(
+                                    "Try Backtesting — pick a strategy and date range "
+                                    "to see how it would have performed on historical data."
+                                ),
+                                html.Li(
+                                    "Use Portfolios to group stocks together and compare "
+                                    "strategy results side by side."
+                                ),
+                            ]),
+                        ]),
+                        label="Quick Start",
+                        tab_id="tab-quickstart",
+                    ),
+                ],
+                active_tab="tab-overview",
+            ),
+        ),
+        dbc.ModalFooter(
+            dbc.Button("Get Started", id="welcome-close-btn", className="ms-auto"),
+        ),
+    ],
+    id="welcome-modal",
+    size="lg",
+    is_open=False,
+    centered=True,
+)
+
 app.layout = dbc.Container([
+    dcc.Store(id="welcome-seen", storage_type="local"),
+    welcome_modal,
     dbc.Row([
         dbc.Col(
             html.Div([
@@ -48,6 +151,23 @@ app.layout = dbc.Container([
         ),
     ]),
 ], fluid=True)
+
+@callback(
+    Output("welcome-modal", "is_open"),
+    Output("welcome-seen", "data"),
+    Input("welcome-seen", "data"),
+    Input("welcome-close-btn", "n_clicks"),
+    prevent_initial_call=False,
+)
+def toggle_welcome_modal(seen_data, n_clicks):
+    triggered = ctx.triggered_id
+    if triggered == "welcome-close-btn":
+        return False, True
+    # First visit: seen_data is None or falsy
+    if not seen_data:
+        return True, dash.no_update
+    return False, dash.no_update
+
 
 if __name__ == "__main__":
     import os

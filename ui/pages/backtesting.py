@@ -17,6 +17,40 @@ dash.register_page(__name__, path="/backtest", name="Backtesting")
 
 layout = dbc.Container([
     html.H2("Backtesting"),
+    dbc.Button(
+        "? Guide",
+        id="bt-guide-toggle",
+        color="link",
+        size="sm",
+        className="mb-2 p-0",
+        style={"fontSize": "0.85rem", "textDecoration": "none", "color": "#999"},
+    ),
+    dbc.Collapse(
+        dbc.Card(dbc.CardBody([
+            html.P(
+                "Backtesting simulates how a trading strategy would have performed on historical data. "
+                "Select a stock, pick a strategy, choose a date range, and see the results.",
+                className="mb-2",
+            ),
+            html.P(html.Strong("Available strategies:"), className="mb-1"),
+            html.Ul([
+                html.Li([html.Strong("SMA Crossover"), " — Buys when the 20-day moving average crosses above the 50-day average (uptrend signal), and sells when it crosses below (downtrend signal)."]),
+                html.Li([html.Strong("RSI + Bollinger"), " — Buys when RSI is below 30 and price is near the lower Bollinger Band (oversold), sells when RSI is above 70 and price is near the upper band (overbought)."]),
+                html.Li([html.Strong("Composite"), " — Combines SMA Crossover and RSI + Bollinger signals with equal weighting for a more balanced approach."]),
+            ], className="mb-2"),
+            html.P(html.Strong("Performance metrics:"), className="mb-1"),
+            html.Ul([
+                html.Li([html.Strong("Total Return"), " — Overall percentage gain or loss of the strategy."]),
+                html.Li([html.Strong("Asset Change"), " — What you'd have earned by simply buying and holding the stock (the benchmark)."]),
+                html.Li([html.Strong("Alpha"), " — The excess return over buy-and-hold. Positive alpha means the strategy beat the market."]),
+                html.Li([html.Strong("Sharpe Ratio"), " — Risk-adjusted return. Above 1.0 is good, above 2.0 is excellent. Measures return per unit of risk."]),
+                html.Li([html.Strong("Max Drawdown"), " — The worst peak-to-trough decline. Shows the largest loss you would have experienced."]),
+                html.Li([html.Strong("Win Rate"), " — Percentage of trades that were profitable."]),
+            ]),
+        ]), className="mb-3", style={"borderColor": "#2a2a2a"}),
+        id="bt-guide-collapse",
+        is_open=False,
+    ),
     dbc.Card(
         dbc.CardBody(
             dbc.Row([
@@ -161,3 +195,13 @@ def run_backtest(n_clicks, ticker, strategy_name, start_date, end_date):
         return metrics_card, dcc.Graph(figure=fig)
     except Exception as e:
         return html.P(f"Error: {e}"), ""
+
+
+@callback(
+    Output("bt-guide-collapse", "is_open"),
+    Input("bt-guide-toggle", "n_clicks"),
+    State("bt-guide-collapse", "is_open"),
+    prevent_initial_call=True,
+)
+def toggle_bt_guide(n_clicks, is_open):
+    return not is_open

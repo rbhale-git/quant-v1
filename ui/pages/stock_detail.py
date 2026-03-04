@@ -15,6 +15,32 @@ dash.register_page(__name__, path="/stock", name="Stock Detail")
 
 layout = dbc.Container([
     html.H2("Stock Detail"),
+    dbc.Button(
+        "? Guide",
+        id="stock-guide-toggle",
+        color="link",
+        size="sm",
+        className="mb-2 p-0",
+        style={"fontSize": "0.85rem", "textDecoration": "none", "color": "#999"},
+    ),
+    dbc.Collapse(
+        dbc.Card(dbc.CardBody([
+            html.P(
+                "Enter a ticker symbol and click Analyze to view a full technical analysis chart. "
+                "If the stock isn't in the database yet, it will be fetched automatically.",
+                className="mb-2",
+            ),
+            html.P(html.Strong("Chart indicators:"), className="mb-1"),
+            html.Ul([
+                html.Li([html.Strong("SMA 20 / SMA 50"), " — Simple Moving Averages smooth out price noise to show the short-term (20-day) and medium-term (50-day) trend direction. When the faster SMA crosses above the slower one, it may signal an uptrend."]),
+                html.Li([html.Strong("Bollinger Bands"), " — An envelope around the price based on volatility. When price touches the lower band, the stock may be oversold; touching the upper band may indicate overbought conditions."]),
+                html.Li([html.Strong("RSI (Relative Strength Index)"), " — A momentum oscillator ranging from 0 to 100. Below 30 is considered oversold (potential buying opportunity), above 70 is overbought (potential selling opportunity)."]),
+                html.Li([html.Strong("MACD (Moving Average Convergence Divergence)"), " — Tracks the relationship between two moving averages. When the MACD line crosses above the signal line, it suggests upward momentum; crossing below suggests downward momentum."]),
+            ]),
+        ]), className="mb-3", style={"borderColor": "#2a2a2a"}),
+        id="stock-guide-collapse",
+        is_open=False,
+    ),
     dbc.Row([
         dbc.Col([
             dbc.Input(id="ticker-input", placeholder="Enter ticker (e.g. AAPL)", type="text"),
@@ -95,3 +121,13 @@ def update_stock_chart(n_clicks, ticker):
         return dcc.Graph(figure=fig)
     except Exception as e:
         return html.P(f"Error: {e}")
+
+
+@callback(
+    Output("stock-guide-collapse", "is_open"),
+    Input("stock-guide-toggle", "n_clicks"),
+    State("stock-guide-collapse", "is_open"),
+    prevent_initial_call=True,
+)
+def toggle_stock_guide(n_clicks, is_open):
+    return not is_open
